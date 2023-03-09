@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SourceFileCollection xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Profile>Reach</Profile>
+  <Platform>DesktopGL</Platform>
+  <Config />
+  <SourceFiles>
+    <File>D:/Projs/hook/Content/images/apple.png</File>
+    <File>D:/Projs/hook/Content/images/hero.png</File>
+    <File>D:/Projs/hook/Content/images/ice.png</File>
+    <File>D:/Projs/hook/Content/images/spikes.png</File>
+    <File>D:/Projs/hook/Content/images/wall.png</File>
+    <File>D:/Projs/hook/Content/fonts/Purista-12.spritefont</File>
+    <File>D:/Projs/hook/Content/fonts/Purista-24.spritefont</File>
+    <File>D:/Projs/hook/Content/fonts/Calibri-36-Compressed.spritefont</File>
+    <File>D:/Projs/hook/Content/fonts/Calibri-36-Not-Compressed.spritefont</File>
+    <File>D:/Projs/hook/Content/images/background.png</File>
+  </SourceFiles>
+</SourceFileCollection>

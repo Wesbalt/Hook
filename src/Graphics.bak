@@ -1,0 +1,302 @@
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using static Hook.Logger;
+using static System.Diagnostics.Debug;
+using System;
+
+namespace Hook
+{
+    public class Camera
+    {
+        public static readonly float MAX_ZOOM = 5;
+        public static readonly float MIN_ZOOM = 0.2f;
+
+        private Viewport view;
+        private Matrix transform;
+        private Vector2 virtualSize;
+        private Vector2 position;
+        private float zoom;
+
+        public Camera(Vector2 virtualSize, Vector2 position, GraphicsDevice graphics)
+        {
+            this.virtualSize = virtualSize;
+            this.position = position;
+            zoom = 1;
+            Update(graphics);
+        }
+
+        public Matrix Transform
+        {
+            get { return transform; }
+        }
+
+        public float Zoom
+        {
+            get { return zoom; }
+            set
+            {
+                if (value > MAX_ZOOM)
+                {
+                    Warn("camera zoom is too large, setting it to {0} instead", MAX_ZOOM);
+                    zoom = MAX_ZOOM;
+                }
+                else if (value < MIN_ZOOM)
+                {
+                    Warn("camera zoom is too small, setting it to {0} instead", MIN_ZOOM);
+                    zoom = MIN_ZOOM;
+                }
+                else
+                {
+                    zoom = value;
+                }
+            }
+        }
+
+        public Vector2 Position
+        {
+            get { return position; }
+            set { position = value; }
+        }
+
+        public Vector2 VirtualSize
+        {
+            get { return virtualSize; }
+        }
+
+        public Viewport Viewport
+        {
+            get { return view; }
+        }
+
+        public void Update(GraphicsDevice graphics)
+        {
+            var scale = new Vector3
+            (
+                graphics.Viewport.Width  / virtualSize.X * zoom,
+                graphics.Viewport.Height / virtualSize.Y * zoom,
+                1
+            );
+
+            var desiredRatio = virtualSize.X/virtualSize.Y;
+            view = graphics.Viewport;
+            if (desiredRatio*graphics.Viewport.Height > graphics.Viewport.Width)
+            {
+                Debug("the viewport height is disproportionally, oldview is "+view);
+                view.Height = (int) (graphics.Viewport.Width/desiredRatio+0.5f);
+                view.Y = (int) ((graphics.Viewport.Height-virtualSize.Y)/2f+0.5f);
+                Debug("new view is "+view);
+            }
+            // graphics.Viewport = newView;
+
+            transform = Matrix.CreateTranslation(-position.X, -position.Y, 0)
+                * Matrix.CreateRotationZ(0)
+                * Matrix.CreateScale(scale)
+                * Matrix.CreateTranslation(view.Width/2f, view.Height/2f, 0);
+        }
+    }
+
+    // @TODO I'm garbage
+    public class Font
+    {
+        private SpriteFont  font;
+        private Color      color;
+        private float      degrees;  // In degrees, going clockwise.
+
+        // (0,0) is the upper left corner of the
+        // text, (1,1) is the lower right corner.
+        // Default is (0.5, 0.5), the center.
+        private Vector2  origin;
+
+        private Vector2  scale;
+
+        public Font(SpriteFont font, Color color, float degrees, Vector2 origin, Vector2 scale)
+        {
+            this.font     = font;
+            this.origin   = origin;
+            this.scale    = scale;
+            this.color    = color;
+            SetDegrees(degrees);
+        }
+
+        public Font(SpriteFont font, Color color, float degrees, Vector2 origin)
+            : this(font, color, degrees, origin, Vector2.One) {}
+
+        public Font(SpriteFont font, Color color, float degrees)
+            : this(font, color, degrees, new Vector2(0.5f,0.5f), Vector2.One) {}
+
+        public Font(SpriteFont font, Color color)
+            : this(font, color, 0, new Vector2(0.5f,0.5f), Vector2.One) {}
+
+        public Font(SpriteFont font)
+            : this(font, Color.White, 0, new Vector2(0.5f,0.5f), Vector2.One) {}
+
+        public void Draw(SpriteBatch batch, string text, Vector2 position)
+        {
+            var pixelOrigin = origin; // @TODO fix me!
+            batch.DrawString
+            (
+                font,
+                text,
+                position,
+			    color,
+			    degrees,
+			    pixelOrigin,
+                scale,
+			    SpriteEffects.None,
+                0  // layerDepth
+            );
+        }
+
+        public void SetFont(SpriteFont font)
+        {
+            this.font = font;
+        }
+
+        public void SetColor(Color color)
+        {
+            this.color = color;
+        }
+
+        public void SetDegrees(float degrees)
+        {
+            this.degrees = MathHelper.ToRadians(degrees);
+        }
+
+        public void SetOrigin(Vector2 origin)
+        {
+            this.origin = origin;
+        }
+
+        public void SetScale(Vector2 scale)
+        {
+            this.scale = scale;
+        }
+
+        public Font GetCopy()
+        {
+            return new Font(font, color, degrees, origin, scale);
+        }
+    }
+
+    /*
+     * Stores properties you can pass to SpriteBatch.Draw
+     * such as texture, position and rotation.
+     *
+     * Rotation is clockwise. The origin (0,0) is the upper
+     * left corner of the texture, (1,1) is the lower right
+     * corner. Remember to dispose the texture!
+     */
+    public class Sprite
+    {
+        private Texture2D  texture;
+        private Vector2    position;
+        private Vector2    scale;
+        private Vector2    origin;
+        private float      degrees;
+        private Color      color;
+
+        // These are to avoid recalculations
+        private float    radians;
+        private bool     doUpdateRadians;
+        private Vector2  pixelOrigin;
+        private bool     doUpdatePixelOrigin;
+
+        /*
+         * Makes a Sprite with sensible defaults.
+         */
+        public Sprite(Texture2D texture, Vector2 position)
+        : this(texture, position, Vector2.One, new Vector2(0.5f, 0.5f), 0, Color.White) {}
+
+        public Sprite(Texture2D texture, Vector2 position, Vector2 scale,
+                      Vector2   origin,  float   degrees,  Color   color)
+        {
+            this.texture = texture;
+            this.position = position;
+            this.scale = scale;
+            this.origin = origin;
+            this.degrees = degrees;
+            this.color = color;
+
+            // Initial values don't matter since they will be recalculated immediately
+            this.radians             = 0;
+            this.doUpdateRadians     = true;
+            this.pixelOrigin         = Vector2.Zero;
+            this.doUpdatePixelOrigin = true;
+        }
+
+        public void Draw(SpriteBatch batch)
+        {
+            if (doUpdateRadians)
+            {
+                radians = MathHelper.ToRadians(degrees);
+                doUpdateRadians = false;
+            }
+
+            if (doUpdatePixelOrigin)
+            {
+                pixelOrigin.X = origin.X * texture.Width;
+                pixelOrigin.Y = origin.Y * texture.Height;
+                doUpdatePixelOrigin = false;
+            }
+
+            batch.Draw
+            (
+                texture,
+                position,
+                null,  // source rectangle
+			    color,
+			    radians,
+			    pixelOrigin,
+                scale,
+			    SpriteEffects.None,
+                0  // layerDepth
+            );
+        }
+
+        public Texture2D Texture
+        {
+            get { return texture; }
+            set { texture = value; doUpdatePixelOrigin = true; }
+        }
+
+        public Vector2 Position
+        {
+            get { return position; }
+            set { position = value; }
+        }
+
+        public Vector2 Scale
+        {
+            get { return scale; }
+            set { scale = value; doUpdatePixelOrigin = true; }
+        }
+
+        public Vector2 Origin
+        {
+            get { return origin; }
+            set { origin = value; doUpdatePixelOrigin = true; }
+        }
+
+        public float Degrees
+        {
+            get { return degrees; }
+            set { degrees = value; doUpdateRadians = true; }
+        }
+
+        public Color Color
+        {
+            get { return color; }
+            set { color = value; }
+        }
+
+        public Sprite GetCopy()
+        {
+            return new Sprite(texture, position, scale, origin, degrees, color);
+        }
+
+        public void Dispose()
+        {
+            texture.Dispose();
+        }
+    }
+}
